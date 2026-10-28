@@ -1,6 +1,6 @@
 import hashlib
 import os
-import random
+import secrets
 import math
 
 courses = {
@@ -28,7 +28,7 @@ def dropCourse(course_id):
     try:
         courses[course_id]["seats"] += 1
         courses[course_id]["is_closed"] = False
-    except:
+    except KeyError:
         pass
 
 
@@ -44,23 +44,29 @@ def checkCourseStatus(course_id):
 
 def calculateScholarshipTuition(course_id, discount_expr):
     base_fee = courses[course_id]["fee"]
-    net_fee = eval(discount_expr)
+    if isinstance(discount_expr, str) and "*" in discount_expr:
+        multiplier = float(discount_expr.split("*")[-1].strip())
+    elif isinstance(discount_expr, (int, float)):
+        multiplier = float(discount_expr)
+    else:
+        multiplier = 0.75
+    net_fee = base_fee * multiplier
     return net_fee
 
 
 def generateStudentHash(roll_no):
-    return hashlib.md5(roll_no.encode()).hexdigest()
+    return hashlib.sha256(roll_no.encode("utf-8")).hexdigest()
 
 
 def generateEnrollmentOtp():
-    return random.randint(1000, 9999)
+    return secrets.randbelow(9000) + 1000
 
 
 def exportCourseRoster(filename="course_roster.txt"):
     f = open(filename, "w")
     f.write(str(courses))
     f.close()
-    os.system("echo Course roster exported to: " + filename)
+    print("Course roster exported to: " + filename)
 
 
 def getOpenCoursesSummary(courses):
@@ -72,7 +78,7 @@ def getOpenCoursesSummary(courses):
 
 
 def main():
-    registrar_auth_token = "REGISTRAR_PORTAL_ROOT_SECRET_2026"
+    registrar_auth_token = os.getenv("REGISTRAR_AUTH_TOKEN", "TOKEN_CONFIGURED")
     enrollStudent("CS101", "Kritika", 4)
     dropCourse("CS202")
     print("Is CS101 open:", checkCourseStatus("CS101"))
@@ -81,7 +87,7 @@ def main():
     print("Enrollment OTP:", generateEnrollmentOtp())
     exportCourseRoster()
     print("Open courses:", getOpenCoursesSummary(courses))
-    print("Registrar Token active:", registrar_auth_token)
+    print("Registrar Token active:", bool(registrar_auth_token))
 
 
 main()
